@@ -1,0 +1,25 @@
+---
+abstract: "Routine and convention to create/update your application's DB schema"
+author:
+  - 'Steven Haryanto <stevenharyanto@gmail.com>'
+build_requires:
+  DBD::SQLite: 0
+  DBI: 0
+  File::chdir: 0
+  Module::Build: 0.3601
+configure_requires:
+  Module::Build: 0.3601
+dynamic_config: 0
+generated_by: 'Dist::Zilla version 4.300028, CPAN::Meta::Converter version 2.120921'
+license: perl
+meta-spec:
+  url: http://module-build.sourceforge.net/META-spec-v1.4.html
+  version: 1.4
+name: SHARYANTO-SQL-Schema
+requires:
+  Log::Any: 0
+  perl: 5.010001
+resources:
+  homepage: http://metacpan.org/release/SHARYANTO-SQL-Schema
+  repository: http://github.com/sharyanto/perl-SHARYANTO-SQL-Schema
+version: 0.01

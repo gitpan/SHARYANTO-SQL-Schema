@@ -1,0 +1,88 @@
+NAME
+    SHARYANTO::SQL::Schema - Routine and convention to create/update your
+    application's DB schema
+
+VERSION
+    version 0.01
+
+DESCRIPTION
+    This module has Rinci metadata.
+
+FUNCTIONS
+    None are exported by default, but they are exportable.
+
+  create_or_update_db_schema(%args) -> [status, msg, result, meta]
+    Routine and convention to create/update your application's DB schema.
+
+    With this routine (and some convention) you can easily create and update
+    database schema for your application in a simple (and boring a.k.a.
+    using plain SQL) way.
+
+    First you supply the SQL statements in "sqls" to create the database in
+    the form of array of arrays of statements. The first array element is a
+    series of SQL statements to create the tables/indexes (recommended to
+    use CREATE TABLE IF NOT EXISTS instead of CREATE TABLE). This is called
+    version 1. Version will be created in the special table called "meta"
+    (in the row ('schema_version', 1). The second array element is a series
+    of SQL statements to update to version 2 (e.g. ALTER TABLE, and so on).
+    The third element to update to version 3, and so on.
+
+    So whenever you want to update your schema, you add a series of SQL
+    statements to the "sqls" array.
+
+    This routine will connect to database and check the current schema
+    version. If "meta" table does not exist yet, it will be created and the
+    first series of SQL statements will be executed. The final result is
+    schema at version 1. If "meta" table exists, schema version will be read
+    from it and one or more series of SQL statements will be executed to get
+    the schema to the latest version.
+
+    Currently only tested on MySQL and SQLite.
+
+    Arguments ('*' denotes required arguments):
+
+    *   dbh* => *obj*
+
+        DBI database handle.
+
+        Example:
+
+            [
+                [
+                    # for version 1
+                    'CREATE TABLE IF NOT EXISTS t1 (...)',
+                    'CREATE TABLE IF NOT EXISTS t2 (...)',
+                ],
+                [
+                    # for version 2
+                    'ALTER TABLE t1 ADD COLUMN c5 INT NOT NULL',
+                    'CREATE UNIQUE INDEX i1 ON t2(c1)',
+                ],
+                [
+                    # for version 3
+                    'ALTER TABLE t2 DROP COLUMN c2',
+                ],
+            ]
+
+    *   sqls* => *array*
+
+        SQL statements to create and update schema.
+
+    Return value:
+
+    Returns an enveloped result (an array). First element (status) is an
+    integer containing HTTP status code (200 means OK, 4xx caller error, 5xx
+    function error). Second element (msg) is a string containing error
+    message, or 'OK' if status is 200. Third element (result) is optional,
+    the actual result. Fourth element (meta) is called result metadata and
+    is optional, a hash that contains extra information.
+
+AUTHOR
+    Steven Haryanto <stevenharyanto@gmail.com>
+
+COPYRIGHT AND LICENSE
+    This software is copyright (c) 2013 by Steven Haryanto.
+
+    This is free software; you can redistribute it and/or modify it under
+    the same terms as the Perl 5 programming language system itself.
+
