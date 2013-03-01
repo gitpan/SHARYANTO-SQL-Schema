@@ -9,6 +9,7 @@ my %module_build_args = (
   "build_requires" => {
     "DBD::SQLite" => 0,
     "DBI" => 0,
+    "Data::Clone" => 0,
     "File::chdir" => 0,
     "Module::Build" => "0.3601"
   },
@@ -20,7 +21,7 @@ my %module_build_args = (
     "Steven Haryanto <stevenharyanto\@gmail.com>"
   ],
   "dist_name" => "SHARYANTO-SQL-Schema",
-  "dist_version" => "0.02",
+  "dist_version" => "0.03",
   "license" => "perl",
   "module_name" => "SHARYANTO::SQL::Schema",
   "recommends" => {},

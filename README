@@ -3,7 +3,7 @@ NAME
     application's DB schema
 
 VERSION
-    version 0.02
+    version 0.03
 
 DESCRIPTION
     This module has Rinci metadata.
@@ -18,24 +18,29 @@ FUNCTIONS
     database schema for your application in a simple (and boring a.k.a.
     using plain SQL) way.
 
-    First you supply the SQL statements in "sqls" to create the database in
-    the form of array of arrays of statements. The first array element is a
-    series of SQL statements to create the tables/indexes (recommended to
-    use CREATE TABLE IF NOT EXISTS instead of CREATE TABLE). This is called
-    version 1. Version will be created in the special table called "meta"
-    (in the row ('schema_version', 1). The second array element is a series
-    of SQL statements to update to version 2 (e.g. ALTER TABLE, and so on).
-    The third element to update to version 3, and so on.
+    *Version*: version is an integer and starts from 1. Each software
+    release with schema change will bump the version number to 1. Version
+    information is stored in a special table called "meta" (SELECT value
+    FROM meta WHERE name='schema_version').
 
-    So whenever you want to update your schema, you add a series of SQL
-    statements to the "sqls" array.
+    You supply the SQL statements in "spec". "spec" is a hash which contains
+    the key "install" (the value of which is a series of SQL statements to
+    create the schema from nothing). It should be the SQL statements to
+    create the latest version of the schema.
+
+    There should also be zero or more "upgrade_to_v$VER" keys, the value of
+    each is a series of SQL statements to upgrade from ($VER-1) to $VER. So
+    there could be "upgrade_to_v2", "upgrade_to_v3", and so on up the latest
+    version.
 
     This routine will connect to database and check the current schema
-    version. If "meta" table does not exist yet, it will be created and the
-    first series of SQL statements will be executed. The final result is
-    schema at version 1. If "meta" table exists, schema version will be read
-    from it and one or more series of SQL statements will be executed to get
-    the schema to the latest version.
+    version. If "meta" table does not exist yet, the SQL statements in
+    "install" will be executed. The "meta" table will also be created and a
+    row ('schema_version', 1) is added.
+
+    If "meta" table already exists, schema version will be read from it and
+    one or more series of SQL statements from "upgrade_to_v$VER" will be
+    executed to bring the schema to the latest version.
 
     Currently only tested on MySQL, Postgres, and SQLite.
 
@@ -45,28 +50,27 @@ FUNCTIONS
 
         DBI database handle.
 
+    *   spec* => *hash*
+
+        SQL statements to create and update schema.
+
         Example:
 
-            [
-                [
-                    # for version 1
+            {
+                install => [
                     'CREATE TABLE IF NOT EXISTS t1 (...)',
                     'CREATE TABLE IF NOT EXISTS t2 (...)',
                 ],
-                [
-                    # for version 2
+    
+                upgrade_to_v2 => [
                     'ALTER TABLE t1 ADD COLUMN c5 INT NOT NULL',
                     'CREATE UNIQUE INDEX i1 ON t2(c1)',
                 ],
-                [
-                    # for version 3
+    
+                upgrade_to_v3 => [
                     'ALTER TABLE t2 DROP COLUMN c2',
                 ],
-            ]
-
-    *   sqls* => *array*
-
-        SQL statements to create and update schema.
+            }
 
     Return value:
 

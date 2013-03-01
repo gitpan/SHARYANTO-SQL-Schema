@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.02'; # VERSION
+our $VERSION = '0.03'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -23,94 +23,124 @@ With this routine (and some convention) you can easily create and update
 database schema for your application in a simple (and boring a.k.a. using plain
 SQL) way.
 
-First you supply the SQL statements in `sqls` to create the database in the form
-of array of arrays of statements. The first array element is a series of SQL
-statements to create the tables/indexes (recommended to use CREATE TABLE IF NOT
-EXISTS instead of CREATE TABLE). This is called version 1. Version will be
-created in the special table called `meta` (in the row ('schema_version', 1).
-The second array element is a series of SQL statements to update to version 2
-(e.g. ALTER TABLE, and so on). The third element to update to version 3, and so
-on.
+*Version*: version is an integer and starts from 1. Each software release with
+ schema change will bump the version number to 1. Version information is stored
+ in a special table called `meta` (SELECT value FROM meta WHERE
+ name='schema_version').
 
-So whenever you want to update your schema, you add a series of SQL statements
-to the `sqls` array.
+You supply the SQL statements in `spec`. `spec` is a hash which contains the key
+`install` (the value of which is a series of SQL statements to create the schema
+from nothing). It should be the SQL statements to create the latest version of
+the schema.
+
+There should also be zero or more `upgrade_to_v$VER` keys, the value of each is
+a series of SQL statements to upgrade from ($VER-1) to $VER. So there could be
+`upgrade_to_v2`, `upgrade_to_v3`, and so on up the latest version.
 
 This routine will connect to database and check the current schema version. If
-`meta` table does not exist yet, it will be created and the first series of SQL
-statements will be executed. The final result is schema at version 1. If `meta`
-table exists, schema version will be read from it and one or more series of SQL
-statements will be executed to get the schema to the latest version.
+`meta` table does not exist yet, the SQL statements in `install` will be
+executed. The `meta` table will also be created and a row ('schema_version', 1)
+is added.
+
+If `meta` table already exists, schema version will be read from it and one or
+more series of SQL statements from `upgrade_to_v$VER` will be executed to bring
+the schema to the latest version.
 
 Currently only tested on MySQL, Postgres, and SQLite.
 
 _
     args => {
-        sqls => {
-            schema => ['array*', of => ['array*' => of => 'str*']],
+        spec => {
+            schema => ['hash*'], # XXX require 'install' & 'latest_v' keys
             summary => 'SQL statements to create and update schema',
-            req => 1,
-        },
-        dbh => {
-            schema => ['obj*'],
-            summary => 'DBI database handle',
             req => 1,
             description => <<'_',
 
 Example:
 
-    [
-        [
-            # for version 1
+    {
+        install => [
             'CREATE TABLE IF NOT EXISTS t1 (...)',
             'CREATE TABLE IF NOT EXISTS t2 (...)',
         ],
-        [
-            # for version 2
+
+        upgrade_to_v2 => [
             'ALTER TABLE t1 ADD COLUMN c5 INT NOT NULL',
             'CREATE UNIQUE INDEX i1 ON t2(c1)',
         ],
-        [
-            # for version 3
+
+        upgrade_to_v3 => [
             'ALTER TABLE t2 DROP COLUMN c2',
         ],
-    ]
+    }
 
 _
+        },
+        dbh => {
+            schema => ['obj*'],
+            summary => 'DBI database handle',
+            req => 1,
         },
     },
     "_perinci.sub.wrapper.validate_args" => 0,
 };
 sub create_or_update_db_schema {
-    my %args = @_; if (!exists($args{'dbh'})) { return [400, "Missing argument: dbh"] } require Scalar::Util; my $_sahv_dpath = []; my $arg_err; ((defined($args{'dbh'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((Scalar::Util::blessed($args{'dbh'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type object"),0)); if ($arg_err) { return [400, "Invalid argument value for dbh: $arg_err"] } if (!exists($args{'sqls'})) { return [400, "Missing argument: sqls"] } require List::Util; ((defined($args{'sqls'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((ref($args{'sqls'}) eq 'ARRAY') ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type array"),0)) && ((push(@$_sahv_dpath, undef), (!defined(List::Util::first(sub {!( ($_sahv_dpath->[-1] = defined($_sahv_dpath->[-1]) ? $_sahv_dpath->[-1]+1 : 0), ((defined($_)) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((ref($_) eq 'ARRAY') ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type array"),0)) && ((push(@$_sahv_dpath, undef), (!defined(List::Util::first(sub {!( ($_sahv_dpath->[-1] = defined($_sahv_dpath->[-1]) ? $_sahv_dpath->[-1]+1 : 0), ((defined($_)) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((!ref($_)) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type text"),0)) )}, @{$_})))) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type text", pop(@$_sahv_dpath)),0)) )}, @{$args{'sqls'}})))) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type array of texts", pop(@$_sahv_dpath)),0)); if ($arg_err) { return [400, "Invalid argument value for sqls: $arg_err"] } # VALIDATE_ARGS
+    my %args = @_; if (!exists($args{'spec'})) { return [400, "Missing argument: spec"] } my $_sahv_dpath = []; my $arg_err; ((defined($args{'spec'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((ref($args{'spec'}) eq 'HASH') ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type hash"),0)); if ($arg_err) { return [400, "Invalid argument value for spec: $arg_err"] } if (!exists($args{'dbh'})) { return [400, "Missing argument: dbh"] } require Scalar::Util; ((defined($args{'dbh'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Required input not specified"),0)) && ((Scalar::Util::blessed($args{'dbh'})) ? 1 : (($arg_err //= (@$_sahv_dpath ? '@'.join("/",@$_sahv_dpath).": " : "") . "Input is not of type object"),0)); if ($arg_err) { return [400, "Invalid argument value for dbh: $arg_err"] } # VALIDATE_ARGS
 
-    my $sqls = $args{sqls};
+    my $spec = $args{spec};
     my $dbh  = $args{dbh};
 
     local $dbh->{RaiseError};
 
     # first, check current schema version
+
+    # XXX check spec: latest_v and upgrade_to_v$V must synchronize
+
     my $v;
     my @t = $dbh->tables("", undef, "meta");
     if (@t) {
         ($v) = $dbh->selectrow_array(
             "SELECT value FROM meta WHERE name='schema_version'");
     } else {
-        $v = 0;
+        $dbh->begin_work;
         $dbh->do("CREATE TABLE meta (name VARCHAR(64) NOT NULL PRIMARY KEY, value VARCHAR(255))")
             or return [500, "Can't create table 'meta': " . $dbh->errstr];
         $dbh->do("INSERT INTO meta (name,value) VALUES ('schema_version',0)")
             or return [500, "Can't insert into 'meta': " . $dbh->errstr];
+        $dbh->commit;
+
+        if ($spec->{install}) {
+            $dbh->begin_work;
+            my $i = 0;
+            for my $sql (@{ $spec->{install} }) {
+                $dbh->do($sql) or return
+                    [500, "Failed executing install SQL #$i ($sql): ".$dbh->errstr];
+                $i++;
+            }
+            $dbh->do("UPDATE meta SET value=$spec->{latest_v} WHERE name='schema_version'")
+                or return [500, "Can't update 'meta': " . $dbh->errstr];
+            $dbh->commit;
+            return [200, "OK (installed)", {version=>$spec->{latest_v}}];
+        } else {
+            # perform upgrade from v1 .. latest
+            $v = 0;
+        }
     }
 
-    # perform schema upgrade atomically (at least for db that supports it like
-    # postgres)
+    my $orig_v = $v;
+
+    # perform schema upgrade atomically per version (at least for db that
+    # supports it like postgres)
     my $err;
+
   UPGRADE:
-    for my $i (($v+1) .. @$sqls) {
+    for my $i (($v+1) .. $spec->{latest_v}) {
         undef $err;
-        $log->debug("Updating database schema to version $i ...");
+        $log->debug("Updating database schema from version $v to $i ...");
+        $spec->{"upgrade_to_v$i"} or return
+            [400, "Error in spec: upgrade_to_v$i not specified"];
         $dbh->begin_work;
-        for my $sql (@{ $sqls->[$i-1] }) {
+        for my $sql (@{ $spec->{"upgrade_to_v$i"} }) {
             $dbh->do($sql) or do { $err = $dbh->errstr; last UPGRADE };
         }
         $dbh->do("UPDATE meta SET value=$i WHERE name='schema_version'")
@@ -123,7 +153,7 @@ sub create_or_update_db_schema {
         $dbh->rollback;
         return [500, "Can't upgrade schema (from version $v): $err"];
     } else {
-        return [200, "OK", {version=>$v}];
+        return [200, "OK (upgraded from v=$orig_v)", {version=>$v}];
     }
 
     [200];
@@ -142,7 +172,7 @@ SHARYANTO::SQL::Schema - Routine and convention to create/update your applicatio
 
 =head1 VERSION
 
-version 0.02
+version 0.03
 
 =head1 DESCRIPTION
 
@@ -162,23 +192,28 @@ With this routine (and some convention) you can easily create and update
 database schema for your application in a simple (and boring a.k.a. using plain
 SQL) way.
 
-First you supply the SQL statements in C<sqls> to create the database in the form
-of array of arrays of statements. The first array element is a series of SQL
-statements to create the tables/indexes (recommended to use CREATE TABLE IF NOT
-EXISTS instead of CREATE TABLE). This is called version 1. Version will be
-created in the special table called C<meta> (in the row ('schema_version', 1).
-The second array element is a series of SQL statements to update to version 2
-(e.g. ALTER TABLE, and so on). The third element to update to version 3, and so
-on.
+I<Version>: version is an integer and starts from 1. Each software release with
+ schema change will bump the version number to 1. Version information is stored
+ in a special table called C<meta> (SELECT value FROM meta WHERE
+ name='schema_version').
 
-So whenever you want to update your schema, you add a series of SQL statements
-to the C<sqls> array.
+You supply the SQL statements in C<spec>. C<spec> is a hash which contains the key
+C<install> (the value of which is a series of SQL statements to create the schema
+from nothing). It should be the SQL statements to create the latest version of
+the schema.
+
+There should also be zero or more C<upgrade_to_v$VER> keys, the value of each is
+a series of SQL statements to upgrade from ($VER-1) to $VER. So there could be
+C<upgrade_to_v2>, C<upgrade_to_v3>, and so on up the latest version.
 
 This routine will connect to database and check the current schema version. If
-C<meta> table does not exist yet, it will be created and the first series of SQL
-statements will be executed. The final result is schema at version 1. If C<meta>
-table exists, schema version will be read from it and one or more series of SQL
-statements will be executed to get the schema to the latest version.
+C<meta> table does not exist yet, the SQL statements in C<install> will be
+executed. The C<meta> table will also be created and a row ('schema_version', 1)
+is added.
+
+If C<meta> table already exists, schema version will be read from it and one or
+more series of SQL statements from C<upgrade_to_v$VER> will be executed to bring
+the schema to the latest version.
 
 Currently only tested on MySQL, Postgres, and SQLite.
 
@@ -190,28 +225,27 @@ Arguments ('*' denotes required arguments):
 
 DBI database handle.
 
+=item * B<spec>* => I<hash>
+
+SQL statements to create and update schema.
+
 Example:
 
-    [
-        [
-            # for version 1
+    {
+        install => [
             'CREATE TABLE IF NOT EXISTS t1 (...)',
             'CREATE TABLE IF NOT EXISTS t2 (...)',
         ],
-        [
-            # for version 2
+    
+        upgrade_to_v2 => [
             'ALTER TABLE t1 ADD COLUMN c5 INT NOT NULL',
             'CREATE UNIQUE INDEX i1 ON t2(c1)',
         ],
-        [
-            # for version 3
+    
+        upgrade_to_v3 => [
             'ALTER TABLE t2 DROP COLUMN c2',
         ],
-    ]
-
-=item * B<sqls>* => I<array>
-
-SQL statements to create and update schema.
+    }
 
 =back
 
