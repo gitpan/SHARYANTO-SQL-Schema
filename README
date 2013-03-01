@@ -3,7 +3,7 @@ NAME
     application's DB schema
 
 VERSION
-    version 0.01
+    version 0.02
 
 DESCRIPTION
     This module has Rinci metadata.
@@ -37,7 +37,7 @@ FUNCTIONS
     from it and one or more series of SQL statements will be executed to get
     the schema to the latest version.
 
-    Currently only tested on MySQL and SQLite.
+    Currently only tested on MySQL, Postgres, and SQLite.
 
     Arguments ('*' denotes required arguments):
 
