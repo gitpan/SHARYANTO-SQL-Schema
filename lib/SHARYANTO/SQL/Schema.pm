@@ -1,11 +1,11 @@
 package SHARYANTO::SQL::Schema;
 
-use 5.010;
+use 5.010001;
 use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.03'; # VERSION
+our $VERSION = '0.04'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -24,9 +24,9 @@ database schema for your application in a simple (and boring a.k.a. using plain
 SQL) way.
 
 *Version*: version is an integer and starts from 1. Each software release with
- schema change will bump the version number to 1. Version information is stored
- in a special table called `meta` (SELECT value FROM meta WHERE
- name='schema_version').
+schema change will bump the version number to 1. Version information is stored
+in a special table called `meta` (SELECT value FROM meta WHERE
+name='schema_version').
 
 You supply the SQL statements in `spec`. `spec` is a hash which contains the key
 `install` (the value of which is a series of SQL statements to create the schema
@@ -101,31 +101,8 @@ sub create_or_update_db_schema {
     if (@t) {
         ($v) = $dbh->selectrow_array(
             "SELECT value FROM meta WHERE name='schema_version'");
-    } else {
-        $dbh->begin_work;
-        $dbh->do("CREATE TABLE meta (name VARCHAR(64) NOT NULL PRIMARY KEY, value VARCHAR(255))")
-            or return [500, "Can't create table 'meta': " . $dbh->errstr];
-        $dbh->do("INSERT INTO meta (name,value) VALUES ('schema_version',0)")
-            or return [500, "Can't insert into 'meta': " . $dbh->errstr];
-        $dbh->commit;
-
-        if ($spec->{install}) {
-            $dbh->begin_work;
-            my $i = 0;
-            for my $sql (@{ $spec->{install} }) {
-                $dbh->do($sql) or return
-                    [500, "Failed executing install SQL #$i ($sql): ".$dbh->errstr];
-                $i++;
-            }
-            $dbh->do("UPDATE meta SET value=$spec->{latest_v} WHERE name='schema_version'")
-                or return [500, "Can't update 'meta': " . $dbh->errstr];
-            $dbh->commit;
-            return [200, "OK (installed)", {version=>$spec->{latest_v}}];
-        } else {
-            # perform upgrade from v1 .. latest
-            $v = 0;
-        }
     }
+    $v //= 0;
 
     my $orig_v = $v;
 
@@ -133,19 +110,43 @@ sub create_or_update_db_schema {
     # supports it like postgres)
     my $err;
 
-  UPGRADE:
+  STEP:
     for my $i (($v+1) .. $spec->{latest_v}) {
         undef $err;
-        $log->debug("Updating database schema from version $v to $i ...");
-        $spec->{"upgrade_to_v$i"} or return
-            [400, "Error in spec: upgrade_to_v$i not specified"];
+        my $last;
+
         $dbh->begin_work;
-        for my $sql (@{ $spec->{"upgrade_to_v$i"} }) {
-            $dbh->do($sql) or do { $err = $dbh->errstr; last UPGRADE };
+
+        if ($v == 0 && !@t) {
+            $dbh->do("CREATE TABLE meta (name VARCHAR(64) NOT NULL PRIMARY KEY, value VARCHAR(255))")
+                or do { $err = $dbh->errstr; last STEP };
+            $dbh->do("INSERT INTO meta (name,value) VALUES ('schema_version',0)")
+                or do { $err = $dbh->errstr; last STEP };
         }
-        $dbh->do("UPDATE meta SET value=$i WHERE name='schema_version'")
-            or do { $err = $dbh->errstr; last UPGRADE };
-        $dbh->commit or do { $err = $dbh->errstr; last UPGRADE };
+
+        if ($v == 0 && $spec->{install}) {
+            $log->debug("Updating database schema from version $v to $i ...");
+            my $j = 0;
+            for my $sql (@{ $spec->{install} }) {
+                $dbh->do($sql) or do { $err = $dbh->errstr; last STEP };
+                $i++;
+            }
+            $dbh->do("UPDATE meta SET value=$spec->{latest_v} WHERE name='schema_version'")
+                or do { $err = $dbh->errstr; last STEP };
+            $last++;
+        } else {
+            $log->debug("Updating database schema from version $v to $i ...");
+            $spec->{"upgrade_to_v$i"}
+                or do { $err = "Error in spec: upgrade_to_v$i not specified"; last STEP };
+            for my $sql (@{ $spec->{"upgrade_to_v$i"} }) {
+                $dbh->do($sql) or do { $err = $dbh->errstr; last STEP };
+            }
+            $dbh->do("UPDATE meta SET value=$i WHERE name='schema_version'")
+                or do { $err = $dbh->errstr; last STEP };
+        }
+
+        $dbh->commit or do { $err = $dbh->errstr; last STEP };
+
         $v = $i;
     }
     if ($err) {
@@ -172,7 +173,7 @@ SHARYANTO::SQL::Schema - Routine and convention to create/update your applicatio
 
 =head1 VERSION
 
-version 0.03
+version 0.04
 
 =head1 DESCRIPTION
 
@@ -193,9 +194,9 @@ database schema for your application in a simple (and boring a.k.a. using plain
 SQL) way.
 
 I<Version>: version is an integer and starts from 1. Each software release with
- schema change will bump the version number to 1. Version information is stored
- in a special table called C<meta> (SELECT value FROM meta WHERE
- name='schema_version').
+schema change will bump the version number to 1. Version information is stored
+in a special table called C<meta> (SELECT value FROM meta WHERE
+name='schema_version').
 
 You supply the SQL statements in C<spec>. C<spec> is a hash which contains the key
 C<install> (the value of which is a series of SQL statements to create the schema
