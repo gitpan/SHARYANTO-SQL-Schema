@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.05'; # VERSION
+our $VERSION = '0.06'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -176,7 +176,7 @@ SHARYANTO::SQL::Schema - Routine and convention to create/update your applicatio
 
 =head1 VERSION
 
-version 0.05
+version 0.06
 
 =head1 DESCRIPTION
 
@@ -190,6 +190,8 @@ at the start of your program/script, e.g.:
  my $spec = {...}; # the schema specification
  my $dbh = DBI->connect(...);
  my $res = create_or_update_db_schema(dbh=>$dbh, spec=>$spec);
+ die "Cannot run the application: cannot create/upgrade database schema: $res->[1]"
+     unless $res->[0] == 200;
 
 This way, your program automatically creates/updates database schema when run.
 Users need not know anything.
