@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.07'; # VERSION
+our $VERSION = '0.08'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -20,11 +20,10 @@ $SPEC{create_or_update_db_schema} = {
     description => <<'_',
 
 With this routine (and some convention) you can easily create and update
-database schema for your application in a simple (and boring a.k.a. using plain
-SQL) way.
+database schema for your application in a simple way using pure SQL.
 
 *Version*: version is an integer and starts from 1. Each software release with
-schema change will bump the version number to 1. Version information is stored
+schema change will bump the version number by 1. Version information is stored
 in a special table called `meta` (SELECT value FROM meta WHERE
 name='schema_version').
 
@@ -37,10 +36,10 @@ There should also be zero or more `upgrade_to_v$VERSION` keys, the value of each
 is a series of SQL statements to upgrade from ($VERSION-1) to $VERSION. So there
 could be `upgrade_to_v2`, `upgrade_to_v3`, and so on up the latest version.
 
-This routine will connect to database and check the current schema version. If
-`meta` table does not exist yet, the SQL statements in `install` will be
-executed. The `meta` table will also be created and a row ('schema_version', 1)
-is added.
+This routine will check the existence of the `meta` table and the current schema
+version. If `meta` table does not exist yet, the SQL statements in `install`
+will be executed. The `meta` table will also be created and a row
+('schema_version', 1) is added.
 
 If `meta` table already exists, schema version will be read from it and one or
 more series of SQL statements from `upgrade_to_v$VERSION` will be executed to
@@ -178,7 +177,7 @@ SHARYANTO::SQL::Schema - Routine and convention to create/update your applicatio
 
 =head1 VERSION
 
-version 0.07
+version 0.08
 
 =head1 DESCRIPTION
 
@@ -204,11 +203,29 @@ Users need not know anything.
 
 I haven't decided on a better name. See L<SHARYANTO>.
 
+=head2 Why use this module instead of other similar solution?
+
+Mainly simplicity. I write simple application which is often self-contained in a
+single module/script. This module works with embedded SQL statements instead of
+having to put SQL in separate files/subdirectory.
+
 =head2 How do I see each SQL statement as it is being executed?
 
 Try using L<Log::Any::For::DBI>, e.g.:
 
  % TRACE=1 perl -MLog::Any::For::DBI -MLog::Any::App yourapp.pl ...
+
+=head1 TODO
+
+=over
+
+=item * Configurable meta table name?
+
+=item * Reversion/downgrade?
+
+Something which does not come up often yet in my case.
+
+=back
 
 =head1 SEE ALSO
 
@@ -216,12 +233,22 @@ Some other database migration tools that directly uses SQL:
 
 =over
 
+=item * L<DBIx::Migration>
+
+Pretty much similar to this module, with support for downgrades. OO style, SQL
+in separate files/subdirectory.
+
 =item * L<Database::Migrator>
 
-Pretty much similar, albeit more fully-fledged/involved. You have to use OO
-style. You put each version's SQL in a separate file and subdirectory. Perl
-scripts can also be executed for each version upgrade. Meta table is
-configurable (default recommended is 'AppliedMigrations').
+Pretty much similar. OO style, SQL in separate files/subdirectory. Perl scripts
+can also be executed for each version upgrade. Meta table is configurable
+(default recommended is 'AppliedMigrations').
+
+=item * L<sqitch>
+
+A more proper database change management tool with dependency resolution and VCS
+awareness. No numbering. Command-line script and Perl library provided. Looks
+pretty awesome and something which I hope to use for more complex applications.
 
 =back
 
@@ -246,11 +273,10 @@ None are exported by default, but they are exportable.
 Routine and convention to create/update your application's DB schema.
 
 With this routine (and some convention) you can easily create and update
-database schema for your application in a simple (and boring a.k.a. using plain
-SQL) way.
+database schema for your application in a simple way using pure SQL.
 
 I<Version>: version is an integer and starts from 1. Each software release with
-schema change will bump the version number to 1. Version information is stored
+schema change will bump the version number by 1. Version information is stored
 in a special table called C<meta> (SELECT value FROM meta WHERE
 name='schema_version').
 
@@ -263,10 +289,10 @@ There should also be zero or more C<upgrade_to_v$VERSION> keys, the value of eac
 is a series of SQL statements to upgrade from ($VERSION-1) to $VERSION. So there
 could be C<upgrade_to_v2>, C<upgrade_to_v3>, and so on up the latest version.
 
-This routine will connect to database and check the current schema version. If
-C<meta> table does not exist yet, the SQL statements in C<install> will be
-executed. The C<meta> table will also be created and a row ('schema_version', 1)
-is added.
+This routine will check the existence of the C<meta> table and the current schema
+version. If C<meta> table does not exist yet, the SQL statements in C<install>
+will be executed. The C<meta> table will also be created and a row
+('schema_version', 1) is added.
 
 If C<meta> table already exists, schema version will be read from it and one or
 more series of SQL statements from C<upgrade_to_v$VERSION> will be executed to

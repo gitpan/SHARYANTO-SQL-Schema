@@ -3,7 +3,7 @@ NAME
     application's DB schema
 
 VERSION
-    version 0.07
+    version 0.08
 
 DESCRIPTION
     This module uses Log::Any for logging.
@@ -26,21 +26,44 @@ FAQ
   Why the name SHARYANTO::*?
     I haven't decided on a better name. See SHARYANTO.
 
+  Why use this module instead of other similar solution?
+    Mainly simplicity. I write simple application which is often
+    self-contained in a single module/script. This module works with
+    embedded SQL statements instead of having to put SQL in separate
+    files/subdirectory.
+
   How do I see each SQL statement as it is being executed?
     Try using Log::Any::For::DBI, e.g.:
 
      % TRACE=1 perl -MLog::Any::For::DBI -MLog::Any::App yourapp.pl ...
 
+TODO
+    *   Configurable meta table name?
+
+    *   Reversion/downgrade?
+
+        Something which does not come up often yet in my case.
+
 SEE ALSO
     Some other database migration tools that directly uses SQL:
 
+    *   DBIx::Migration
+
+        Pretty much similar to this module, with support for downgrades. OO
+        style, SQL in separate files/subdirectory.
+
     *   Database::Migrator
 
-        Pretty much similar, albeit more fully-fledged/involved. You have to
-        use OO style. You put each version's SQL in a separate file and
-        subdirectory. Perl scripts can also be executed for each version
-        upgrade. Meta table is configurable (default recommended is
-        'AppliedMigrations').
+        Pretty much similar. OO style, SQL in separate files/subdirectory.
+        Perl scripts can also be executed for each version upgrade. Meta
+        table is configurable (default recommended is 'AppliedMigrations').
+
+    *   sqitch
+
+        A more proper database change management tool with dependency
+        resolution and VCS awareness. No numbering. Command-line script and
+        Perl library provided. Looks pretty awesome and something which I
+        hope to use for more complex applications.
 
 AUTHOR
     Steven Haryanto <stevenharyanto@gmail.com>
@@ -58,11 +81,10 @@ FUNCTIONS
     Routine and convention to create/update your application's DB schema.
 
     With this routine (and some convention) you can easily create and update
-    database schema for your application in a simple (and boring a.k.a.
-    using plain SQL) way.
+    database schema for your application in a simple way using pure SQL.
 
     *Version*: version is an integer and starts from 1. Each software
-    release with schema change will bump the version number to 1. Version
+    release with schema change will bump the version number by 1. Version
     information is stored in a special table called "meta" (SELECT value
     FROM meta WHERE name='schema_version').
 
@@ -76,10 +98,10 @@ FUNCTIONS
     $VERSION. So there could be "upgrade_to_v2", "upgrade_to_v3", and so on
     up the latest version.
 
-    This routine will connect to database and check the current schema
-    version. If "meta" table does not exist yet, the SQL statements in
-    "install" will be executed. The "meta" table will also be created and a
-    row ('schema_version', 1) is added.
+    This routine will check the existence of the "meta" table and the
+    current schema version. If "meta" table does not exist yet, the SQL
+    statements in "install" will be executed. The "meta" table will also be
+    created and a row ('schema_version', 1) is added.
 
     If "meta" table already exists, schema version will be read from it and
     one or more series of SQL statements from "upgrade_to_v$VERSION" will be
