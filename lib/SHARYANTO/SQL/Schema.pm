@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.06'; # VERSION
+our $VERSION = '0.07'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -170,13 +170,15 @@ sub create_or_update_db_schema {
 __END__
 =pod
 
+=encoding utf-8
+
 =head1 NAME
 
 SHARYANTO::SQL::Schema - Routine and convention to create/update your application's DB schema
 
 =head1 VERSION
 
-version 0.06
+version 0.07
 
 =head1 DESCRIPTION
 
@@ -196,6 +198,18 @@ at the start of your program/script, e.g.:
 This way, your program automatically creates/updates database schema when run.
 Users need not know anything.
 
+=head1 FAQ
+
+=head2 Why the name SHARYANTO::*?
+
+I haven't decided on a better name. See L<SHARYANTO>.
+
+=head2 How do I see each SQL statement as it is being executed?
+
+Try using L<Log::Any::For::DBI>, e.g.:
+
+ % TRACE=1 perl -MLog::Any::For::DBI -MLog::Any::App yourapp.pl ...
+
 =head1 SEE ALSO
 
 Some other database migration tools that directly uses SQL:
@@ -211,10 +225,16 @@ configurable (default recommended is 'AppliedMigrations').
 
 =back
 
-=head1 DESCRIPTION
+=head1 AUTHOR
 
+Steven Haryanto <stevenharyanto@gmail.com>
 
-This module has L<Rinci> metadata.
+=head1 COPYRIGHT AND LICENSE
+
+This software is copyright (c) 2013 by Steven Haryanto.
+
+This is free software; you can redistribute it and/or modify it under
+the same terms as the Perl 5 programming language system itself.
 
 =head1 FUNCTIONS
 
@@ -292,17 +312,6 @@ Example:
 Return value:
 
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
-
-=head1 AUTHOR
-
-Steven Haryanto <stevenharyanto@gmail.com>
-
-=head1 COPYRIGHT AND LICENSE
-
-This software is copyright (c) 2013 by Steven Haryanto.
-
-This is free software; you can redistribute it and/or modify it under
-the same terms as the Perl 5 programming language system itself.
 
 =cut
 

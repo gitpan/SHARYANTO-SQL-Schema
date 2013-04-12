@@ -23,4 +23,4 @@ requires:
 resources:
   homepage: http://metacpan.org/release/SHARYANTO-SQL-Schema
   repository: http://github.com/sharyanto/perl-SHARYANTO-SQL-Schema
-version: 0.06
+version: 0.07
