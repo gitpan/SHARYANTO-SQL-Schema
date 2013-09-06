@@ -3,7 +3,7 @@ NAME
     application's DB schema
 
 VERSION
-    version 0.08
+    version 0.09
 
 DESCRIPTION
     This module uses Log::Any for logging.
@@ -78,8 +78,6 @@ FUNCTIONS
     None are exported by default, but they are exportable.
 
   create_or_update_db_schema(%args) -> [status, msg, result, meta]
-    Routine and convention to create/update your application's DB schema.
-
     With this routine (and some convention) you can easily create and update
     database schema for your application in a simple way using pure SQL.
 
@@ -88,10 +86,10 @@ FUNCTIONS
     information is stored in a special table called "meta" (SELECT value
     FROM meta WHERE name='schema_version').
 
-    You supply the SQL statements in "spec". "spec" is a hash which contains
-    the key "install" (the value of which is a series of SQL statements to
-    create the schema from nothing). It should be the SQL statements to
-    create the latest version of the schema.
+    You supply the SQL statements in "spec". "spec" is a hash which at least
+    must contain the key "latest_v" (an integer) and "install" (a series of
+    SQL statements to create the schema from nothing). It should be the SQL
+    statements to create the latest version of the schema.
 
     There should also be zero or more "upgrade_to_v$VERSION" keys, the value
     of each is a series of SQL statements to upgrade from ($VERSION-1) to
@@ -125,6 +123,8 @@ FUNCTIONS
         Example:
 
             {
+                latest_v => 3,
+    
                 install => [
                     'CREATE TABLE IF NOT EXISTS t1 (...)',
                     'CREATE TABLE IF NOT EXISTS t2 (...)',

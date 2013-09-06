@@ -5,7 +5,7 @@ use strict;
 use warnings;
 use Log::Any '$log';
 
-our $VERSION = '0.08'; # VERSION
+our $VERSION = '0.09'; # VERSION
 
 use Exporter;
 our @ISA = qw(Exporter);
@@ -27,10 +27,10 @@ schema change will bump the version number by 1. Version information is stored
 in a special table called `meta` (SELECT value FROM meta WHERE
 name='schema_version').
 
-You supply the SQL statements in `spec`. `spec` is a hash which contains the key
-`install` (the value of which is a series of SQL statements to create the schema
-from nothing). It should be the SQL statements to create the latest version of
-the schema.
+You supply the SQL statements in `spec`. `spec` is a hash which at least must
+contain the key `latest_v` (an integer) and `install` (a series of SQL
+statements to create the schema from nothing). It should be the SQL statements
+to create the latest version of the schema.
 
 There should also be zero or more `upgrade_to_v$VERSION` keys, the value of each
 is a series of SQL statements to upgrade from ($VERSION-1) to $VERSION. So there
@@ -61,6 +61,8 @@ _
 Example:
 
     {
+        latest_v => 3,
+
         install => [
             'CREATE TABLE IF NOT EXISTS t1 (...)',
             'CREATE TABLE IF NOT EXISTS t2 (...)',
@@ -112,8 +114,17 @@ sub create_or_update_db_schema {
     # supports it like postgres)
     my $err;
 
+    my $latest_v = $spec->{latest_v};
+    if (!defined($latest_v)) {
+        $latest_v = 1;
+        for (keys %$spec) {
+            next unless /^upgrade_to_v(\d+)$/;
+            $latest_v = $1 if $1 > $latest_v;
+        }
+    }
+
   STEP:
-    for my $i (($v+1) .. $spec->{latest_v}) {
+    for my $i (($v+1) .. $latest_v) {
         undef $err;
         my $last;
 
@@ -133,7 +144,7 @@ sub create_or_update_db_schema {
                 $dbh->do($sql) or do { $err = $dbh->errstr; last STEP };
                 $i++;
             }
-            $dbh->do("UPDATE meta SET value=$spec->{latest_v} WHERE name='schema_version'")
+            $dbh->do("UPDATE meta SET value=$latest_v WHERE name='schema_version'")
                 or do { $err = $dbh->errstr; last STEP };
             $last++;
         } else {
@@ -165,8 +176,8 @@ sub create_or_update_db_schema {
 1;
 # ABSTRACT: Routine and convention to create/update your application's DB schema
 
-
 __END__
+
 =pod
 
 =encoding utf-8
@@ -177,7 +188,7 @@ SHARYANTO::SQL::Schema - Routine and convention to create/update your applicatio
 
 =head1 VERSION
 
-version 0.08
+version 0.09
 
 =head1 DESCRIPTION
 
@@ -270,8 +281,6 @@ None are exported by default, but they are exportable.
 
 =head2 create_or_update_db_schema(%args) -> [status, msg, result, meta]
 
-Routine and convention to create/update your application's DB schema.
-
 With this routine (and some convention) you can easily create and update
 database schema for your application in a simple way using pure SQL.
 
@@ -280,10 +289,10 @@ schema change will bump the version number by 1. Version information is stored
 in a special table called C<meta> (SELECT value FROM meta WHERE
 name='schema_version').
 
-You supply the SQL statements in C<spec>. C<spec> is a hash which contains the key
-C<install> (the value of which is a series of SQL statements to create the schema
-from nothing). It should be the SQL statements to create the latest version of
-the schema.
+You supply the SQL statements in C<spec>. C<spec> is a hash which at least must
+contain the key C<latest_v> (an integer) and C<install> (a series of SQL
+statements to create the schema from nothing). It should be the SQL statements
+to create the latest version of the schema.
 
 There should also be zero or more C<upgrade_to_v$VERSION> keys, the value of each
 is a series of SQL statements to upgrade from ($VERSION-1) to $VERSION. So there
@@ -318,6 +327,8 @@ SQL statements to create and update schema.
 Example:
 
     {
+        latest_v => 3,
+    
         install => [
             'CREATE TABLE IF NOT EXISTS t1 (...)',
             'CREATE TABLE IF NOT EXISTS t2 (...)',
@@ -340,4 +351,3 @@ Return value:
 Returns an enveloped result (an array). First element (status) is an integer containing HTTP status code (200 means OK, 4xx caller error, 5xx function error). Second element (msg) is a string containing error message, or 'OK' if status is 200. Third element (result) is optional, the actual result. Fourth element (meta) is called result metadata and is optional, a hash that contains extra information.
 
 =cut
-

@@ -4,7 +4,7 @@
       "Steven Haryanto <stevenharyanto@gmail.com>"
    ],
    "dynamic_config" : 0,
-   "generated_by" : "Dist::Zilla version 4.300028, CPAN::Meta::Converter version 2.120921",
+   "generated_by" : "Dist::Zilla version 4.300035, CPAN::Meta::Converter version 2.132140",
    "license" : [
       "perl_5"
    ],
@@ -40,10 +40,13 @@
       },
       "test" : {
          "requires" : {
+            "Capture::Tiny" : "0",
             "DBD::SQLite" : "0",
             "DBI" : "0",
             "Data::Clone" : "0",
-            "File::chdir" : "0"
+            "File::chdir" : "0",
+            "Test::More" : "0.88",
+            "blib" : "0"
          }
       }
    },
@@ -54,6 +57,6 @@
          "url" : "http://github.com/sharyanto/perl-SHARYANTO-SQL-Schema"
       }
    },
-   "version" : "0.08"
+   "version" : "0.09"
 }
 
